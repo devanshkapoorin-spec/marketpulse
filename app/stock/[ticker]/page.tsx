@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic'
 
 import { notFound } from 'next/navigation'
-import yahooFinance from 'yahoo-finance2'
 import PriceChart from '@/components/PriceChart'
 import TechnicalPanel from '@/components/TechnicalPanel'
 import AIScore from '@/components/AIScore'
@@ -17,21 +16,26 @@ type QuoteResult =
   | { status: 'not_found' }
   | { status: 'error' }
 
+// Route via our own API so we use the same serverless function context
+// that the client components use — avoids direct yahoo-finance2 calls
+// being blocked by Yahoo's rate-limiting on Vercel's server IPs.
 async function getQuote(ticker: string): Promise<QuoteResult> {
   try {
-    const [quote, info] = await Promise.all([
-      yahooFinance.quote(ticker, {}, { validateResult: false }) as any,
-      (yahooFinance.quoteSummary(
-        ticker,
-        { modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'] },
-        { validateResult: false }
-      ) as any).catch(() => null),
-    ])
-    // Yahoo Finance returns a result with no price for invalid tickers
-    if (!quote?.regularMarketPrice) return { status: 'not_found' }
-    return { status: 'ok', quote, info }
+    const base = process.env.VERCEL_URL
+      ? `https://${process.env.VERCEL_URL}`
+      : 'http://localhost:3000'
+
+    const res = await fetch(`${base}/api/quote/${encodeURIComponent(ticker)}`, {
+      cache: 'no-store',
+    })
+
+    if (res.status === 404) return { status: 'not_found' }
+    if (!res.ok) return { status: 'error' }
+
+    const data = await res.json()
+    if (!data?.quote?.regularMarketPrice) return { status: 'not_found' }
+    return { status: 'ok', quote: data.quote, info: data.info }
   } catch {
-    // Network/timeout/rate-limit — not the user's fault
     return { status: 'error' }
   }
 }
