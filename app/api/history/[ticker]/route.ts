@@ -14,9 +14,9 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
     else if (period === '2y')  start.setFullYear(end.getFullYear() - 2)
     else start.setFullYear(end.getFullYear() - 1)
 
-    const data = await yahooFinance.historical(ticker, { period1: start, period2: end })
+    const data = await yahooFinance.historical(ticker, { period1: start, period2: end }, { validateResult: false })
     return NextResponse.json(data)
-  } catch {
-    return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Failed to fetch history' }, { status: 500 })
   }
 }

@@ -17,18 +17,34 @@ export default function NewsPanel({ ticker }: NewsPanelProps) {
   const [articles, setArticles] = useState<Article[]>([])
   const [overall, setOverall] = useState<{ avg: number; label: string; color: string } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
+    setLoading(true)
+    setError(false)
     fetch(`/api/news/${ticker}`)
       .then(r => r.json())
       .then(d => {
+        if (d.error) throw new Error(d.error)
         setArticles(d.articles || [])
         setOverall(d.overall)
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [ticker])
 
-  if (loading) return <div className="h-48 flex items-center justify-center text-text-secondary">Loading news...</div>
+  if (loading) return (
+    <div className="bg-bg-secondary rounded-xl border border-border p-5">
+      <div className="h-48 flex items-center justify-center text-text-secondary text-sm">Loading news...</div>
+    </div>
+  )
+
+  if (error) return (
+    <div className="bg-bg-secondary rounded-xl border border-border p-5">
+      <h3 className="text-text-primary font-semibold mb-4">Latest News</h3>
+      <p className="text-text-secondary text-sm text-center py-8">Unable to load news</p>
+    </div>
+  )
 
   return (
     <div className="bg-bg-secondary rounded-xl border border-border p-5">

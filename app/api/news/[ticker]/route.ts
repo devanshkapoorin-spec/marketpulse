@@ -5,7 +5,7 @@ import { analyzeSentiment, overallSentiment } from '@/lib/sentiment'
 export async function GET(_req: NextRequest, { params }: { params: { ticker: string } }) {
   try {
     const ticker = params.ticker.toUpperCase()
-    const result = await yahooFinance.search(ticker, { newsCount: 12 }) as any
+    const result = await yahooFinance.search(ticker, { newsCount: 12 }, { validateResult: false }) as any
     const articles = (result.news || []).map((item: any) => ({
       title: item.title,
       link: item.link,
@@ -15,7 +15,8 @@ export async function GET(_req: NextRequest, { params }: { params: { ticker: str
     }))
     const scores = articles.map((a: any) => a.sentiment.score)
     return NextResponse.json({ articles, overall: overallSentiment(scores) })
-  } catch {
-    return NextResponse.json({ articles: [], overall: { avg: 0, label: 'Neutral', color: '#8B949E' } })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Failed to fetch news'
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

@@ -28,17 +28,18 @@ export default function PortfolioOptimizer() {
     setLoading(true)
     setError('')
     try {
-      const histories = await Promise.all(
-        tickers.map(t =>
-          fetch(`/api/history/${t}?period=1y`)
-            .then(r => r.json())
-            .then((raw: any[]) => raw.map(d => +d.close))
-        )
+      const results = await Promise.all(
+        tickers.map(async t => {
+          const raw: unknown = await fetch(`/api/history/${t}?period=1y`).then(r => r.json())
+          if (!Array.isArray(raw) || raw.length === 0) throw new Error(t)
+          return (raw as { close: number }[]).map(d => +d.close)
+        })
       )
-      const res = await runMonteCarlo(tickers, histories)
+      const res = runMonteCarlo(tickers, results)
       setResult(res)
-    } catch {
-      setError('Failed to fetch data for one or more tickers')
+    } catch (e) {
+      const failedTicker = e instanceof Error ? e.message : 'unknown'
+      setError(`Failed to fetch data for ${failedTicker}. Check the ticker symbol.`)
     } finally {
       setLoading(false)
     }

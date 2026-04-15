@@ -12,8 +12,8 @@ interface StockPageProps { params: { ticker: string } }
 async function getQuote(ticker: string): Promise<{ quote: any; info: any } | null> {
   try {
     const [quote, info] = await Promise.all([
-      yahooFinance.quote(ticker) as any,
-      (yahooFinance.quoteSummary(ticker, { modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'] }) as any)
+      yahooFinance.quote(ticker, {}, { validateResult: false }) as any,
+      (yahooFinance.quoteSummary(ticker, { modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'] }, { validateResult: false }) as any)
         .catch(() => null),
     ])
     return { quote, info }

@@ -120,9 +120,21 @@ export function calcAIScore(indicators: {
     else { signals.push({ name: 'Volume', signal: 'Normal Volume', color: 'yellow', value: `${volumeRatio.toFixed(1)}x avg` }) }
   }
 
+  if (change5d !== null) {
+    if (change5d > 0.03) { score += 5; signals.push({ name: 'Momentum', signal: '5d Rally — Bullish', color: 'green', value: `+${(change5d * 100).toFixed(1)}%` }) }
+    else if (change5d < -0.03) { score -= 5; signals.push({ name: 'Momentum', signal: '5d Decline — Bearish', color: 'red', value: `${(change5d * 100).toFixed(1)}%` }) }
+    else { signals.push({ name: 'Momentum', signal: 'Sideways', color: 'yellow', value: `${(change5d * 100).toFixed(1)}%` }) }
+  }
+
   const clamped = Math.max(5, Math.min(95, score))
-  const recommendation = clamped >= 65 ? 'Buy' : clamped >= 45 ? 'Hold' : 'Sell'
-  const recColor = clamped >= 65 ? 'green' : clamped >= 45 ? 'yellow' : 'red'
+  const recommendation =
+    clamped >= 75 ? 'Strong Buy' :
+    clamped >= 60 ? 'Buy' :
+    clamped >= 40 ? 'Hold' :
+    clamped >= 25 ? 'Sell' : 'Strong Sell'
+  const recColor =
+    clamped >= 60 ? 'green' :
+    clamped >= 40 ? 'yellow' : 'red'
 
   return { score: clamped, recommendation, recColor, signals }
 }

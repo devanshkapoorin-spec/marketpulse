@@ -5,12 +5,12 @@ export async function GET(_req: NextRequest, { params }: { params: { ticker: str
   try {
     const ticker = params.ticker.toUpperCase()
     const [quote, info] = await Promise.all([
-      yahooFinance.quote(ticker),
-      (yahooFinance.quoteSummary(ticker, { modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'] }) as any)
+      yahooFinance.quote(ticker, {}, { validateResult: false }) as any,
+      (yahooFinance.quoteSummary(ticker, { modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'] }, { validateResult: false }) as any)
         .catch(() => null),
     ])
     return NextResponse.json({ quote, info })
-  } catch {
-    return NextResponse.json({ error: 'Ticker not found' }, { status: 404 })
+  } catch (e: any) {
+    return NextResponse.json({ error: e?.message || 'Ticker not found' }, { status: 404 })
   }
 }

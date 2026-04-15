@@ -1,5 +1,5 @@
 'use client'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { format } from 'date-fns'
 
@@ -7,37 +7,52 @@ const PERIODS = ['1W', '1M', '3M', '6M', '1Y', '2Y']
 
 interface PriceChartProps { ticker: string; initialColor: string }
 
+interface ChartPoint {
+  date: string
+  close: number
+  volume: number
+  open: number
+}
+
+function CustomTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: ChartPoint }[] }) {
+  if (!active || !payload?.length) return null
+  const d = payload[0].payload
+  return (
+    <div className="bg-bg-secondary border border-border rounded-lg p-3 text-sm">
+      <p className="text-text-secondary">{d.date}</p>
+      <p className="text-text-primary font-semibold">${payload[0].value.toLocaleString()}</p>
+      <p className="text-text-secondary">Vol: {(d.volume / 1e6).toFixed(1)}M</p>
+    </div>
+  )
+}
+
 export default function PriceChart({ ticker, initialColor }: PriceChartProps) {
   const [period, setPeriod] = useState('1Y')
-  const [data, setData] = useState<any[]>([])
+  const [data, setData] = useState<ChartPoint[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
-  useEffect(() => {
+  const fetchData = useCallback(() => {
     setLoading(true)
+    setError(false)
     fetch(`/api/history/${ticker}?period=${period.toLowerCase()}`)
       .then(r => r.json())
-      .then(raw => {
-        setData(raw.map((d: any) => ({
+      .then((raw: unknown) => {
+        if (!Array.isArray(raw) || raw.length === 0) throw new Error('no data')
+        setData(raw.map((d: { date: string; close: number; volume: number; open: number }) => ({
           date: format(new Date(d.date), period === '1W' || period === '1M' ? 'MMM dd' : 'MMM yy'),
           close: +d.close.toFixed(2),
           volume: d.volume,
           open: +d.open.toFixed(2),
         })))
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [ticker, period])
 
+  useEffect(() => { fetchData() }, [fetchData])
+
   const color = initialColor
-  const CustomTooltip = ({ active, payload }: any) => {
-    if (!active || !payload?.length) return null
-    return (
-      <div className="bg-bg-secondary border border-border rounded-lg p-3 text-sm">
-        <p className="text-text-secondary">{payload[0]?.payload?.date}</p>
-        <p className="text-text-primary font-semibold">${payload[0]?.value?.toLocaleString()}</p>
-        <p className="text-text-secondary">Vol: {(payload[0]?.payload?.volume / 1e6).toFixed(1)}M</p>
-      </div>
-    )
-  }
 
   return (
     <div className="bg-bg-secondary rounded-xl border border-border p-5">
@@ -55,7 +70,15 @@ export default function PriceChart({ ticker, initialColor }: PriceChartProps) {
       </div>
 
       {loading ? (
-        <div className="h-64 flex items-center justify-center text-text-secondary">Loading...</div>
+        <div className="h-64 flex items-center justify-center text-text-secondary text-sm">Loading chart...</div>
+      ) : error ? (
+        <div className="h-64 flex flex-col items-center justify-center gap-3">
+          <p className="text-text-secondary text-sm">Failed to load price data</p>
+          <button onClick={fetchData}
+            className="text-xs text-accent-blue hover:underline">
+            Try again
+          </button>
+        </div>
       ) : (
         <>
           <ResponsiveContainer width="100%" height={260}>

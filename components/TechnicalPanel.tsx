@@ -12,12 +12,16 @@ interface TechnicalPanelProps { ticker: string }
 export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
   const [data, setData] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
   const [active, setActive] = useState<'RSI' | 'MACD' | 'BB'>('RSI')
 
   useEffect(() => {
+    setLoading(true)
+    setError(false)
     fetch(`/api/history/${ticker}?period=1y`)
       .then(r => r.json())
-      .then(raw => {
+      .then((raw: unknown) => {
+        if (!Array.isArray(raw) || raw.length === 0) throw new Error('no data')
         const closes = raw.map((d: any) => +d.close)
         const dates = raw.map((d: any) => format(new Date(d.date), 'MMM yy'))
         const rsi = calcRSI(closes)
@@ -40,6 +44,7 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
           sma50: sma50[i] !== null ? +sma50[i]!.toFixed(2) : null,
         })))
       })
+      .catch(() => setError(true))
       .finally(() => setLoading(false))
   }, [ticker])
 
@@ -55,7 +60,15 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
     )
   }
 
-  if (loading) return <div className="h-64 flex items-center justify-center text-text-secondary">Loading indicators...</div>
+  if (loading) return (
+    <div className="h-64 flex items-center justify-center text-text-secondary text-sm">Loading indicators...</div>
+  )
+
+  if (error) return (
+    <div className="bg-bg-secondary rounded-xl border border-border p-5">
+      <p className="text-text-secondary text-sm text-center py-8">Failed to load indicator data</p>
+    </div>
+  )
 
   return (
     <div className="space-y-4">
