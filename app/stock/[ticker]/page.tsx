@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import yahooFinance from 'yahoo-finance2'
 import PriceChart from '@/components/PriceChart'
 import TechnicalPanel from '@/components/TechnicalPanel'
 import AIScore from '@/components/AIScore'
@@ -8,14 +9,14 @@ import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
 
 interface StockPageProps { params: { ticker: string } }
 
-async function getQuote(ticker: string) {
+async function getQuote(ticker: string): Promise<{ quote: any; info: any } | null> {
   try {
-    const res = await fetch(
-      `${process.env.NEXT_PUBLIC_BASE_URL || 'http://localhost:3000'}/api/quote/${ticker}`,
-      { next: { revalidate: 60 } }
-    )
-    if (!res.ok) return null
-    return res.json()
+    const [quote, info] = await Promise.all([
+      yahooFinance.quote(ticker) as any,
+      (yahooFinance.quoteSummary(ticker, { modules: ['summaryDetail', 'defaultKeyStatistics', 'assetProfile'] }) as any)
+        .catch(() => null),
+    ])
+    return { quote, info }
   } catch {
     return null
   }
@@ -38,7 +39,7 @@ export default async function StockPage({ params }: StockPageProps) {
   const ticker = params.ticker.toUpperCase()
   const data = await getQuote(ticker)
 
-  if (!data || data.error) notFound()
+  if (!data || !data.quote) notFound()
 
   const q = data.quote
   const info = data.info
