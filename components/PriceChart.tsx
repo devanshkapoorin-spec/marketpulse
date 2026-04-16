@@ -40,7 +40,10 @@ export default function PriceChart({ ticker, initialColor }: PriceChartProps) {
       .then((raw: unknown) => {
         if (!Array.isArray(raw) || raw.length === 0) throw new Error('no data')
         setData(raw.map((d: { date: string; close: number; volume: number; open: number }) => ({
-          date: format(new Date(d.date), period === '1W' || period === '1M' ? 'MMM dd' : 'MMM yy'),
+          date: format(
+            new Date(d.date),
+            period === '1W' || period === '1M' ? 'MMM d' : 'MMM yy'
+          ),
           close: +d.close.toFixed(2),
           volume: d.volume,
           open: +d.open.toFixed(2),

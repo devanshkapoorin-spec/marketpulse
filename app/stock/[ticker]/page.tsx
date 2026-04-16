@@ -76,8 +76,7 @@ export default async function StockPage({ params }: StockPageProps) {
                           border border-accent-yellow/20 rounded-xl px-4 py-3 mt-4">
             <AlertTriangle className="w-4 h-4 flex-shrink-0" />
             <span>
-              Quote data is temporarily unavailable — Yahoo Finance may be rate-limiting this server.
-              Charts and indicators below load independently.
+              Quote data is temporarily unavailable. Charts and indicators below load independently.
             </span>
             <Link href={`/stock/${ticker}`}
               className="ml-auto text-xs underline underline-offset-2 flex-shrink-0">
