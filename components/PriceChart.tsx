@@ -5,7 +5,7 @@ import { format } from 'date-fns'
 
 const PERIODS = ['1W', '1M', '3M', '6M', '1Y', '2Y']
 
-interface PriceChartProps { ticker: string; initialColor: string }
+interface PriceChartProps { ticker: string; color?: string }
 
 interface ChartPoint {
   date: string
@@ -26,7 +26,7 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { valu
   )
 }
 
-export default function PriceChart({ ticker, initialColor }: PriceChartProps) {
+export default function PriceChart({ ticker, color = '#58A6FF' }: PriceChartProps) {
   const [period, setPeriod] = useState('1Y')
   const [data, setData] = useState<ChartPoint[]>([])
   const [loading, setLoading] = useState(true)
@@ -55,8 +55,6 @@ export default function PriceChart({ ticker, initialColor }: PriceChartProps) {
 
   useEffect(() => { fetchData() }, [fetchData])
 
-  const color = initialColor
-
   return (
     <div className="bg-bg-secondary rounded-xl border border-border p-5">
       <div className="flex items-center justify-between mb-5">
@@ -77,10 +75,7 @@ export default function PriceChart({ ticker, initialColor }: PriceChartProps) {
       ) : error ? (
         <div className="h-64 flex flex-col items-center justify-center gap-3">
           <p className="text-text-secondary text-sm">Failed to load price data</p>
-          <button onClick={fetchData}
-            className="text-xs text-accent-blue hover:underline">
-            Try again
-          </button>
+          <button onClick={fetchData} className="text-xs text-accent-blue hover:underline">Try again</button>
         </div>
       ) : (
         <>
