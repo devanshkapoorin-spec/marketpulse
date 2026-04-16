@@ -5,7 +5,6 @@ import TechnicalPanel from '@/components/TechnicalPanel'
 import AIScore from '@/components/AIScore'
 import NewsPanel from '@/components/NewsPanel'
 import PortfolioOptimizer from '@/components/PortfolioOptimizer'
-import AboutPanel from '@/components/AboutPanel'
 
 interface StockPageProps { params: { ticker: string } }
 
@@ -27,7 +26,6 @@ export default function StockPage({ params }: StockPageProps) {
         <div className="space-y-6">
           <AIScore ticker={ticker} />
           <NewsPanel ticker={ticker} />
-          <AboutPanel ticker={ticker} />
         </div>
       </div>
     </div>

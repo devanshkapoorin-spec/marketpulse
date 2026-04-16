@@ -10,34 +10,39 @@ export async function GET(_req: NextRequest, { params }: { params: { ticker: str
 
   try {
     const today = new Date().toISOString().split('T')[0]
-    const twoWeeksAgo = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
     const oneYearAgo = new Date(Date.now() - 366 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
-    const [recentRes, detailsRes, yearRes] = await Promise.allSettled([
-      fetch(`${BASE}/v2/aggs/ticker/${ticker}/range/1/day/${twoWeeksAgo}/${today}?adjusted=true&sort=desc&limit=5&apiKey=${KEY}`),
-      fetch(`${BASE}/vX/reference/tickers/${ticker}?apiKey=${KEY}`),
-      fetch(`${BASE}/v2/aggs/ticker/${ticker}/range/1/day/${oneYearAgo}/${today}?adjusted=true&sort=asc&limit=365&apiKey=${KEY}`),
+    // Two calls instead of three — one aggregates call covers current price,
+    // prev close, 52W high/low, and 3M avg volume all at once.
+    // next: { revalidate } shares the cached response across all serverless
+    // invocations that hit the same URL within the revalidation window.
+    const [aggRes, detailsRes] = await Promise.allSettled([
+      fetch(
+        `${BASE}/v2/aggs/ticker/${ticker}/range/1/day/${oneYearAgo}/${today}?adjusted=true&sort=desc&limit=365&apiKey=${KEY}`,
+        { next: { revalidate: 300 } }
+      ),
+      fetch(
+        `${BASE}/vX/reference/tickers/${ticker}?apiKey=${KEY}`,
+        { next: { revalidate: 86400 } }  // company info changes rarely
+      ),
     ])
 
-    const recentData = recentRes.status === 'fulfilled' && recentRes.value.ok ? await recentRes.value.json() : null
-    const detailsData = detailsRes.status === 'fulfilled' && detailsRes.value.ok ? await detailsRes.value.json() : null
-    const yearData = yearRes.status === 'fulfilled' && yearRes.value.ok ? await yearRes.value.json() : null
+    const aggData = aggRes.status === 'fulfilled' && aggRes.value.ok
+      ? await aggRes.value.json() : null
+    const detailsData = detailsRes.status === 'fulfilled' && detailsRes.value.ok
+      ? await detailsRes.value.json() : null
 
-    const bars: any[] = recentData?.results ?? []
+    const bars: any[] = aggData?.results ?? []
     if (bars.length === 0) return NextResponse.json({ error: 'Ticker not found' }, { status: 404 })
 
-    const latest = bars[0]
-    const prev = bars[1]
+    const latest = bars[0]            // most recent trading day
+    const prev = bars[1]              // previous trading day
+    const closes = bars.map((b: any) => b.c as number)
+    const w52High = Math.max(...closes)
+    const w52Low = Math.min(...closes)
 
-    const yearBars: any[] = yearData?.results ?? []
-    const yearCloses = yearBars.map(b => b.c as number)
-    const w52High = yearCloses.length > 0 ? Math.max(...yearCloses) : null
-    const w52Low = yearCloses.length > 0 ? Math.min(...yearCloses) : null
-
-    const recentVols = yearBars.slice(-63).map(b => b.v as number)
-    const avgVol3M = recentVols.length > 0
-      ? recentVols.reduce((a, b) => a + b, 0) / recentVols.length
-      : null
+    const last63Vols = bars.slice(0, 63).map((b: any) => b.v as number)
+    const avgVol3M = last63Vols.reduce((a, b) => a + b, 0) / last63Vols.length
 
     const price: number = latest.c
     const prevClose: number = prev?.c ?? latest.o
@@ -74,7 +79,9 @@ export async function GET(_req: NextRequest, { params }: { params: { ticker: str
       },
     }
 
-    return NextResponse.json({ quote, info })
+    return NextResponse.json({ quote, info }, {
+      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to fetch quote'
     return NextResponse.json({ error: msg }, { status: 500 })

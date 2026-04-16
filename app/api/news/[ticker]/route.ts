@@ -11,11 +11,14 @@ export async function GET(_req: NextRequest, { params }: { params: { ticker: str
 
   try {
     const res = await fetch(
-      `${BASE}/v2/reference/news?ticker=${ticker}&limit=12&order=desc&sort=published_utc&apiKey=${KEY}`
+      `${BASE}/v2/reference/news?ticker=${ticker}&limit=12&order=desc&sort=published_utc&apiKey=${KEY}`,
+      { next: { revalidate: 300 } }
     )
     if (!res.ok) throw new Error('Failed to fetch news')
 
     const data = await res.json()
+    if (data.status === 'ERROR') throw new Error(data.error ?? 'Polygon API error')
+
     const articles = (data.results ?? []).map((item: any) => ({
       title: item.title,
       link: item.article_url,
@@ -25,7 +28,9 @@ export async function GET(_req: NextRequest, { params }: { params: { ticker: str
     }))
 
     const scores = articles.map((a: any) => a.sentiment.score)
-    return NextResponse.json({ articles, overall: overallSentiment(scores) })
+    return NextResponse.json({ articles, overall: overallSentiment(scores) }, {
+      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=600' },
+    })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to fetch news'
     return NextResponse.json({ error: msg }, { status: 500 })

@@ -180,7 +180,15 @@ export default function QuoteHeader({ ticker, onColorReady }: QuoteHeaderProps) 
       </div>
 
       {info?.assetProfile?.longBusinessSummary && (
-        <div className="hidden" data-summary={info.assetProfile.longBusinessSummary} />
+        <details className="mt-4 bg-bg-secondary rounded-xl border border-border p-4 group">
+          <summary className="text-text-primary font-semibold text-sm cursor-pointer list-none flex items-center justify-between">
+            About {quote.shortName ?? ticker}
+            <span className="text-text-muted text-xs group-open:rotate-180 transition-transform">▼</span>
+          </summary>
+          <p className="text-text-muted text-xs leading-relaxed mt-3">
+            {info.assetProfile.longBusinessSummary}
+          </p>
+        </details>
       )}
     </div>
   )
