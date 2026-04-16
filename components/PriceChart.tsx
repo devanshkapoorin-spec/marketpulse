@@ -1,18 +1,15 @@
 'use client'
-import { useState, useEffect, useCallback } from 'react'
+import { useState } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, BarChart, Bar } from 'recharts'
 import { format } from 'date-fns'
 
 const PERIODS = ['1W', '1M', '3M', '6M', '1Y', '2Y']
 
-interface PriceChartProps { ticker: string; color?: string }
+interface PriceChartProps { ticker: string }
 
-interface ChartPoint {
-  date: string
-  close: number
-  volume: number
-  open: number
-}
+interface ChartPoint { date: string; close: number; volume: number; open: number }
 
 function CustomTooltip({ active, payload }: { active?: boolean; payload?: { value: number; payload: ChartPoint }[] }) {
   if (!active || !payload?.length) return null
@@ -26,34 +23,26 @@ function CustomTooltip({ active, payload }: { active?: boolean; payload?: { valu
   )
 }
 
-export default function PriceChart({ ticker, color = '#58A6FF' }: PriceChartProps) {
+export default function PriceChart({ ticker }: PriceChartProps) {
   const [period, setPeriod] = useState('1Y')
-  const [data, setData] = useState<ChartPoint[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
 
-  const fetchData = useCallback(() => {
-    setLoading(true)
-    setError(false)
-    fetch(`/api/history/${ticker}?period=${period.toLowerCase()}`)
-      .then(r => r.json())
-      .then((raw: unknown) => {
-        if (!Array.isArray(raw) || raw.length === 0) throw new Error('no data')
-        setData(raw.map((d: { date: string; close: number; volume: number; open: number }) => ({
-          date: format(
-            new Date(d.date),
-            period === '1W' || period === '1M' ? 'MMM d' : 'MMM yy'
-          ),
-          close: +d.close.toFixed(2),
-          volume: d.volume,
-          open: +d.open.toFixed(2),
-        })))
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
-  }, [ticker, period])
+  const { data: raw, error, isLoading } = useSWR(
+    `/api/history/${ticker}?period=${period.toLowerCase()}`,
+    fetcher
+  )
 
-  useEffect(() => { fetchData() }, [fetchData])
+  const data: ChartPoint[] = Array.isArray(raw)
+    ? raw.map((d: { date: string; close: number; volume: number; open: number }) => ({
+        date: format(new Date(d.date), period === '1W' || period === '1M' ? 'MMM d' : 'MMM yy'),
+        close: +d.close.toFixed(2),
+        volume: d.volume,
+        open: +d.open.toFixed(2),
+      }))
+    : []
+
+  const lastClose = data[data.length - 1]?.close ?? 0
+  const firstClose = data[0]?.close ?? 0
+  const color = lastClose >= firstClose ? '#3FB950' : '#F85149'
 
   return (
     <div className="bg-bg-secondary rounded-xl border border-border p-5">
@@ -70,12 +59,13 @@ export default function PriceChart({ ticker, color = '#58A6FF' }: PriceChartProp
         </div>
       </div>
 
-      {loading ? (
-        <div className="h-64 flex items-center justify-center text-text-secondary text-sm">Loading chart...</div>
-      ) : error ? (
+      {isLoading ? (
+        <div className="h-64 flex items-center justify-center text-text-secondary text-sm animate-pulse">
+          Loading chart...
+        </div>
+      ) : error || data.length === 0 ? (
         <div className="h-64 flex flex-col items-center justify-center gap-3">
           <p className="text-text-secondary text-sm">Failed to load price data</p>
-          <button onClick={fetchData} className="text-xs text-accent-blue hover:underline">Try again</button>
         </div>
       ) : (
         <>
@@ -87,8 +77,8 @@ export default function PriceChart({ ticker, color = '#58A6FF' }: PriceChartProp
                   <stop offset="95%" stopColor={color} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false}
-                interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false}
+                axisLine={false} interval="preserveStartEnd" />
               <YAxis tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false}
                 domain={['auto', 'auto']} tickFormatter={v => `$${v}`} width={60} />
               <Tooltip content={<CustomTooltip />} />

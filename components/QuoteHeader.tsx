@@ -1,39 +1,9 @@
 'use client'
-import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 import { ArrowUpRight, ArrowDownRight, Minus } from 'lucide-react'
 
-interface QuoteHeaderProps {
-  ticker: string
-  onColorReady?: (color: string) => void
-}
-
-interface Quote {
-  regularMarketPrice: number
-  regularMarketChange: number
-  regularMarketChangePercent: number
-  regularMarketOpen: number
-  regularMarketPreviousClose: number
-  regularMarketDayHigh: number
-  regularMarketDayLow: number
-  fiftyTwoWeekHigh: number | null
-  fiftyTwoWeekLow: number | null
-  regularMarketVolume: number
-  averageDailyVolume3Month: number | null
-  marketCap: number | null
-  trailingPE: number | null
-  epsTrailingTwelveMonths: number | null
-  longName: string
-  shortName: string
-}
-
-interface Info {
-  summaryDetail: { beta: number | null }
-  assetProfile: {
-    sector: string | null
-    industry: string | null
-    longBusinessSummary: string | null
-  }
-}
+interface QuoteHeaderProps { ticker: string }
 
 function fmt(n: number | null | undefined, decimals = 2) {
   if (n == null) return '—'
@@ -48,71 +18,51 @@ function fmtBig(n: number | null | undefined) {
   return `$${n.toLocaleString()}`
 }
 
-function StatsSkeleton() {
-  return (
-    <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3 mt-6 p-4
-                    bg-bg-secondary rounded-xl border border-border animate-pulse">
-      {Array.from({ length: 12 }).map((_, i) => (
-        <div key={i} className="text-center">
-          <div className="h-2 bg-bg-tertiary rounded w-3/4 mx-auto mb-1.5" />
-          <div className="h-3 bg-bg-tertiary rounded w-full mx-auto" />
-        </div>
-      ))}
-    </div>
-  )
+function Skeleton({ className }: { className: string }) {
+  return <div className={`bg-bg-tertiary rounded animate-pulse ${className}`} />
 }
 
-export default function QuoteHeader({ ticker, onColorReady }: QuoteHeaderProps) {
-  const [quote, setQuote] = useState<Quote | null>(null)
-  const [info, setInfo] = useState<Info | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+export default function QuoteHeader({ ticker }: QuoteHeaderProps) {
+  const { data, error, isLoading } = useSWR(`/api/quote/${ticker}`, fetcher)
 
-  useEffect(() => {
-    setLoading(true)
-    setError(false)
-    fetch(`/api/quote/${ticker}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) throw new Error(d.error)
-        setQuote(d.quote)
-        setInfo(d.info)
-        const change = d.quote?.regularMarketChange ?? 0
-        onColorReady?.(change >= 0 ? '#3FB950' : '#F85149')
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
-  }, [ticker, onColorReady])
+  const quote = data?.quote
+  const info = data?.info
 
-  if (loading) {
+  if (isLoading) {
     return (
       <div className="mb-8">
-        <div className="flex flex-wrap items-start justify-between gap-4 animate-pulse">
-          <div>
-            <div className="flex items-center gap-3 mb-2">
-              <div className="h-10 w-24 bg-bg-secondary rounded-lg" />
-              <div className="h-6 w-48 bg-bg-secondary rounded-lg" />
+        <div className="flex flex-wrap items-start justify-between gap-4 mb-6">
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <Skeleton className="h-10 w-20" />
+              <Skeleton className="h-6 w-48" />
             </div>
-            <div className="h-3 w-36 bg-bg-secondary rounded" />
+            <Skeleton className="h-3 w-36" />
           </div>
-          <div className="text-right">
-            <div className="h-10 w-32 bg-bg-secondary rounded-lg mb-2" />
-            <div className="h-4 w-24 bg-bg-secondary rounded ml-auto" />
+          <div className="space-y-2 text-right">
+            <Skeleton className="h-10 w-32 ml-auto" />
+            <Skeleton className="h-4 w-24 ml-auto" />
           </div>
         </div>
-        <StatsSkeleton />
+        <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-12 gap-3 p-4
+                        bg-bg-secondary rounded-xl border border-border animate-pulse">
+          {Array.from({ length: 12 }).map((_, i) => (
+            <div key={i} className="text-center space-y-1.5">
+              <Skeleton className="h-2 w-3/4 mx-auto" />
+              <Skeleton className="h-3 w-full" />
+            </div>
+          ))}
+        </div>
       </div>
     )
   }
 
   if (error || !quote) {
     return (
-      <div className="mb-8">
-        <div className="flex items-center gap-3 mb-2">
-          <h1 className="text-4xl font-extrabold text-text-primary">{ticker}</h1>
-        </div>
-        <p className="text-text-secondary text-sm">Quote data unavailable — try refreshing</p>
-        <StatsSkeleton />
+      <div className="mb-8 p-4 bg-bg-secondary rounded-xl border border-border">
+        <p className="text-text-secondary text-sm">
+          Could not load quote for <span className="text-text-primary font-semibold">{ticker}</span> — check the ticker symbol or try again.
+        </p>
       </div>
     )
   }
@@ -158,11 +108,7 @@ export default function QuoteHeader({ ticker, onColorReady }: QuoteHeaderProps) 
           <p className="text-4xl font-bold text-text-primary">${fmt(quote.regularMarketPrice)}</p>
           <div className={`flex items-center justify-end gap-1 mt-1 text-sm font-medium
             ${isFlat ? 'text-text-secondary' : isUp ? 'text-accent-green' : 'text-accent-red'}`}>
-            {isFlat
-              ? <Minus className="w-4 h-4" />
-              : isUp
-              ? <ArrowUpRight className="w-4 h-4" />
-              : <ArrowDownRight className="w-4 h-4" />}
+            {isFlat ? <Minus className="w-4 h-4" /> : isUp ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
             {isUp && '+'}{fmt(change)} ({isUp && '+'}{changePct.toFixed(2)}%)
             <span className="text-text-muted font-normal ml-1">today</span>
           </div>

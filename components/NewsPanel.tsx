@@ -1,5 +1,6 @@
 'use client'
-import { useState, useEffect } from 'react'
+import useSWR from 'swr'
+import { fetcher } from '@/lib/fetcher'
 import { ExternalLink } from 'lucide-react'
 import { format } from 'date-fns'
 
@@ -14,28 +15,16 @@ interface Article {
 interface NewsPanelProps { ticker: string }
 
 export default function NewsPanel({ ticker }: NewsPanelProps) {
-  const [articles, setArticles] = useState<Article[]>([])
-  const [overall, setOverall] = useState<{ avg: number; label: string; color: string } | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(false)
+  const { data, error, isLoading } = useSWR(`/api/news/${ticker}`, fetcher)
 
-  useEffect(() => {
-    setLoading(true)
-    setError(false)
-    fetch(`/api/news/${ticker}`)
-      .then(r => r.json())
-      .then(d => {
-        if (d.error) throw new Error(d.error)
-        setArticles(d.articles || [])
-        setOverall(d.overall)
-      })
-      .catch(() => setError(true))
-      .finally(() => setLoading(false))
-  }, [ticker])
+  const articles: Article[] = data?.articles ?? []
+  const overall = data?.overall
 
-  if (loading) return (
+  if (isLoading) return (
     <div className="bg-bg-secondary rounded-xl border border-border p-5">
-      <div className="h-48 flex items-center justify-center text-text-secondary text-sm">Loading news...</div>
+      <div className="h-48 flex items-center justify-center text-text-secondary text-sm animate-pulse">
+        Loading news...
+      </div>
     </div>
   )
 
