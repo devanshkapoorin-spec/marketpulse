@@ -52,14 +52,16 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
       return NextResponse.json({ error: data.error ?? 'Polygon API error' }, { status: 500 })
     }
 
-    const results = (data.results ?? []).map((bar: any) => ({
-      date: new Date(bar.t).toISOString(),
-      open: bar.o,
-      high: bar.h,
-      low: bar.l,
-      close: bar.c,
-      volume: bar.v,
-    }))
+    const results = (data.results ?? [])
+      .sort((a: any, b: any) => a.t - b.t)
+      .map((bar: any) => ({
+        date: new Date(bar.t).toISOString(),
+        open: bar.o,
+        high: bar.h,
+        low: bar.l,
+        close: bar.c,
+        volume: bar.v,
+      }))
 
     return NextResponse.json(results, {
       headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
