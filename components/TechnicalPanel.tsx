@@ -89,7 +89,7 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
           </div>
           <ResponsiveContainer width="100%" height={220}>
             <LineChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} interval={Math.max(1, Math.floor(data.length / 10))} />
               <YAxis domain={[0, 100]} tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip content={<Tip />} />
               <ReferenceLine y={70} stroke="#F85149" strokeDasharray="4 4" strokeWidth={1} />
@@ -106,7 +106,7 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
           <h3 className="text-text-primary font-semibold mb-3">MACD (12, 26, 9)</h3>
           <ResponsiveContainer width="100%" height={220}>
             <ComposedChart data={data} margin={{ top: 5, right: 10, left: 10, bottom: 0 }}>
-              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} interval={Math.max(1, Math.floor(data.length / 10))} />
               <YAxis tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} />
               <Tooltip content={<Tip />} />
               <ReferenceLine y={0} stroke="#30363D" strokeWidth={1} />
@@ -129,7 +129,7 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
                   <stop offset="95%" stopColor="#58A6FF" stopOpacity={0.02} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} interval="preserveStartEnd" />
+              <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} interval={Math.max(1, Math.floor(data.length / 10))} />
               <YAxis domain={['auto', 'auto']} tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false} tickFormatter={v => `$${v}`} width={60} />
               <Tooltip content={<Tip />} />
               <Area type="monotone" dataKey="bbUpper" stroke="#58A6FF" strokeWidth={1} strokeDasharray="4 2" fill="url(#bbGrad)" dot={false} name="Upper" />

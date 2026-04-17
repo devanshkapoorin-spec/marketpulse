@@ -99,7 +99,9 @@ export default function QuoteHeader({ ticker }: QuoteHeaderProps) {
           </div>
           {info?.assetProfile?.sector && (
             <p className="text-text-muted text-sm">
-              {info.assetProfile.sector} · {info.assetProfile.industry}
+              {info.assetProfile.sector !== info.assetProfile.industry
+                ? `${info.assetProfile.sector} · ${info.assetProfile.industry}`
+                : info.assetProfile.sector}
             </p>
           )}
         </div>

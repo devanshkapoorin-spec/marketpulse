@@ -78,7 +78,7 @@ export default function PriceChart({ ticker }: PriceChartProps) {
                 </linearGradient>
               </defs>
               <XAxis dataKey="date" tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false}
-                axisLine={false} interval="preserveStartEnd" />
+                axisLine={false} interval={Math.max(1, Math.floor(data.length / 10))} />
               <YAxis tick={{ fill: '#8B949E', fontSize: 11 }} tickLine={false} axisLine={false}
                 domain={['auto', 'auto']} tickFormatter={v => `$${v}`} width={60} />
               <Tooltip content={<CustomTooltip />} />
