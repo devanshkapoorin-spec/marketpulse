@@ -12,13 +12,21 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
   const end = new Date()
   const start = new Date()
   let limit = 365
+  // Short periods are time-sensitive — don't cache them in Next.js Data Cache
+  // Long periods are stable — cache aggressively to stay within Polygon free tier
+  let revalidate = 300
+  let cacheControl = 'public, s-maxage=60, stale-while-revalidate=300'
 
   if (period === '1w') {
-    start.setDate(end.getDate() - 12)
-    limit = 12
+    start.setDate(end.getDate() - 20) // 20 calendar days buffer for weekends + holidays
+    limit = 20
+    revalidate = 0           // never cache — always fetch fresh dates
+    cacheControl = 'public, s-maxage=30, stale-while-revalidate=60'
   } else if (period === '1m') {
-    start.setDate(end.getDate() - 38)
-    limit = 35
+    start.setDate(end.getDate() - 50) // 50 calendar days buffer
+    limit = 50
+    revalidate = 0
+    cacheControl = 'public, s-maxage=60, stale-while-revalidate=120'
   } else if (period === '3m') {
     start.setDate(end.getDate() - 95)
     limit = 95
@@ -37,13 +45,9 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
   const to = end.toISOString().split('T')[0]
 
   try {
-    // next: { revalidate } means Next.js Data Cache is shared across all
-    // serverless invocations — PriceChart, TechnicalPanel, and AIScore all
-    // request the same URL, so only the first hits Polygon; the rest get
-    // the cached response. This keeps us within Polygon's free-tier rate limit.
     const res = await fetch(
       `${BASE}/v2/aggs/ticker/${ticker}/range/1/day/${from}/${to}?adjusted=true&sort=asc&limit=${limit}&apiKey=${KEY}`,
-      { next: { revalidate: 300 } }
+      { next: { revalidate } }
     )
     if (!res.ok) return NextResponse.json({ error: 'Failed to fetch history' }, { status: 500 })
 
@@ -63,8 +67,12 @@ export async function GET(req: NextRequest, { params }: { params: { ticker: stri
         volume: bar.v,
       }))
 
-    return NextResponse.json(results, {
-      headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' },
+    // Slice to the correct number of recent trading days
+    const displayLimits: Record<string, number> = { '1w': 7, '1m': 22, '3m': 65, '6m': 130 }
+    const trimmed = displayLimits[period] ? results.slice(-displayLimits[period]) : results
+
+    return NextResponse.json(trimmed, {
+      headers: { 'Cache-Control': cacheControl },
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to fetch history'
