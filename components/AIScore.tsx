@@ -39,7 +39,7 @@ function Gauge({ score }: { score: number }) {
 export default function AIScore({ ticker }: AIScoreProps) {
   // Same SWR key as TechnicalPanel — zero extra network requests
   const { data: raw, error, isLoading } = useSWR(
-    `/api/history/${ticker}?period=1y`,
+    `/api/history/${ticker}?period=2y`,
     fetcher
   )
 

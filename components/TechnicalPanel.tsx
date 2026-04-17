@@ -12,7 +12,7 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
   const [active, setActive] = useState<'RSI' | 'MACD' | 'BB'>('RSI')
 
   const { data: raw, error, isLoading } = useSWR(
-    `/api/history/${ticker}?period=1y`,
+    `/api/history/${ticker}?period=2y`,
     fetcher
   )
 
@@ -48,7 +48,9 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
   const sma20 = calcSMA(closes, 20)
   const sma50 = calcSMA(closes, 50)
 
-  const data = closes.map((c: number, i: number) => ({
+  // Compute indicators on full 2Y dataset for warm-up accuracy,
+  // then slice to last 252 trading days (~1Y) for display
+  const allData = closes.map((c: number, i: number) => ({
     date: dates[i],
     close: +c.toFixed(2),
     rsi: rsi[i] != null ? +rsi[i]!.toFixed(1) : null,
@@ -61,6 +63,7 @@ export default function TechnicalPanel({ ticker }: TechnicalPanelProps) {
     sma20: sma20[i] != null ? +sma20[i]!.toFixed(2) : null,
     sma50: sma50[i] != null ? +sma50[i]!.toFixed(2) : null,
   }))
+  const data = allData.slice(-252)
 
   const price = closes[closes.length - 1]
   const latestSma20 = data.filter(d => d.sma20 != null).slice(-1)[0]?.sma20
